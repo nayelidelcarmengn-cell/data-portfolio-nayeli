@@ -1,0 +1,125 @@
+---
+title: "Forecasting via Holt method"
+author: "Nayeli González Novelo"
+date: "`r format(Sys.Date(), '%Y-%m-%d')`"
+output:
+  pdf_document: default
+  html_document: default
+  word_document: default
+---
+# Link de los datos: https://drive.google.com/file/d/1HiBN-CFrBhj65RKWDJ_MtX41SFQRzeXN/view?usp=sharing
+
+# Caso:
+
+Una oficina de planeación requiere un pronóstico anual a 5 años del PIB de México para presupuestación. 
+
+Pregunta operativa.
+
+¿Cuál es la trayectoria del PIB para los siguientes 5 años?
+
+
+# Librerías
+```{r}
+library(tidyverse)
+library(fabletools)
+library(fable)
+library(feasts)
+library(tsibble)
+library(lubridate)
+library(fpp3)
+```
+
+
+# Preparación de los datos.
+```{r}
+ts_gdp <- read_csv("mexico_gdp.csv") %>% 
+  mutate(
+    Year = parse_integer(as.character(Year)),  
+    y    = y/1e9                                      # a USD billones
+  ) %>% 
+  arrange(Year) %>% 
+  as_tsibble(index = Year)     
+```
+
+
+# Análisis exploratorio.
+```{r}
+autoplot(ts_gdp, y) +
+  labs(title = "PIB anual — México",
+       x = NULL, y = "PIB (USD billones)")
+```
+
+
+# Datos de prueba y de entrenamiento.
+```{r}
+h <- 5  
+n_total <- nrow(ts_gdp)
+ts_train <- ts_gdp %>% slice_head(n = n_total - h)
+ts_test  <- ts_gdp %>% slice_tail(n = h)
+```
+
+
+# Construcción del modelo
+```{r}
+fit_holt <- ts_train %>%
+  model(HOLT =
+          ETS(y ~ error("A") + trend("A") + season("N")))
+
+```
+
+
+# Cálculo de pronósticos
+```{r}
+fc_holt_test <- fit_holt %>% 
+  forecast(h = nrow(ts_test)) 
+```
+
+# backtest
+# Cálculo de medidas de error.
+```{r}
+acc <- accuracy(fc_holt_test, ts_test) %>%
+  as_tibble() %>%
+  transmute(Modelo = "Holt",
+            MAE  = MAE,
+            MSE  = RMSE^2,
+            MAPE = MAPE)
+```
+
+ 
+# Pronóstico operativo a 5 años hacia el futuro 
+```{r}
+fc_holt_fut <- (ts_gdp %>%
+                  model(ETS(y ~ error("A") + trend("A") + season("N")))) %>%
+  forecast(h = 5)
+```
+
+# Presentación gráfica de los resultados
+```{r}
+pf <- autoplot(ts_gdp, y, linewidth = 0.6) +
+  autolayer(fc_holt_fut, level = c(80, 95), linewidth = 0.6) +
+  labs(
+    title    = "Proyección Holt — PIB México (5 años)",
+    subtitle = "Pronóstico: puntual e intervalos 80% y 95%",
+    x = NULL, y = "PIB (USD billones)"
+  )
+pf
+```
+
+
+# Resultados: Pronósticos puntuales y por intervalos de confianza
+
+```{r}
+intervalos <- fc_holt_fut %>%
+  hilo(level = c(80, 95)) %>%
+  mutate(point = .mean) %>%
+  unpack_hilo(`80%`) %>% 
+  rename(lo80 = `80%_lower`, hi80 = `80%_upper`) %>%
+  unpack_hilo(`95%`) %>%
+  rename(lo95 = `95%_lower`, hi95 = `95%_upper`) %>%
+  select(Year, point, lo80, hi80, lo95, hi95)  
+
+intervalos %>% print(n = Inf)
+```
+
+ 
+ 
