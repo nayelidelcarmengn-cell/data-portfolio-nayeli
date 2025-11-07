@@ -1,0 +1,64 @@
+---
+title: "tipos de graficas"
+format: html
+editor: visual
+---
+
+```{r}
+#| echo: false
+datos <-read.csv("hydroponicsgrowth.csv")
+str(datos)
+```
+
+## Ejemplo de gráfica de barras
+
+```{r}
+#| echo: false
+library(ggplot2)
+ggplot(datos, aes(x=NON2))+
+  geom_bar(fill="orange")+
+  labs(title="Distribución de nodos",
+       x="Número de nodos",
+       y="Número de tubérculos")+
+  theme_minimal()+
+  facet_grid(Variety~.)
+  
+```
+
+## Ejemplo de diagrama de caja
+
+```{r}
+#| echo: false
+ggplot(datos, aes(x=Vinelength2wks,y=Variety,fill=Variety))+
+  geom_boxplot()+
+  labs(title="Longitud de las vides por variedad",
+       x="Longitud",
+       y="Variedad")+
+  theme_get()
+```
+
+## Ejemplo de histograma
+
+```{r}
+#| echo: false
+ggplot(datos,aes(Vinelength2wks, binwidth=2))+
+  geom_histogram(fill="purple")+
+  labs(title="Longitud de las vides a las dos semanas",
+       x="Longitud",
+       y="Conteo")+
+  theme_minimal()+
+  facet_grid(Variety~.)
+
+```
+
+## Ejemplo de gráfica de dispersión
+
+```{r}
+#| echo: false
+ggplot(datos,aes(x= NON2, y=NON4))+
+  geom_point(col="green")+
+  labs(x="longitud",
+       y="peso")+
+  theme_bw()
+
+```

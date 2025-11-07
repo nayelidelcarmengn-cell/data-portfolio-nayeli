@@ -1,0 +1,121 @@
+---
+title: "Análisis inferencial"
+format: html
+editor: visual
+---
+
+```{r}
+#| echo: false
+library(ggplot2)
+datos <-read.csv("hydroponicsgrowth.csv")
+```
+
+## Ejemplo de diagrama de caja
+
+```{r}
+#| echo: false
+ggplot(datos, aes(x=Vinelength2wks,y=Variety,fill=Variety))+
+  geom_boxplot()+
+  labs(title="Longitud de las vides por variedad",
+       x="Longitud",
+       y="Variedad")+
+  theme_get()
+```
+
+Conjetura: La media de la longitud de los tubérculos a las dos semanas es menor en la variedad ASIEDU que en la variedad KPAMYO.
+
+Definimos las submuestras:
+
+```{r}
+a = subset(datos,Variety=="ASIEDU")$Vinelength2wks
+k= subset(datos,Variety=="KPAMYO")$Vinelength2wks
+```
+
+Realizamos las pruebas de normalidad:
+
+$H_0:$La muestra proviene de una población normal.
+
+$H_a:$ La muestra no proviene de una población normal.
+
+Nivel de significancia = $\alpha=0.05$
+
+```{r}
+library(nortest)
+lillie.test(a)
+lillie.test(k)
+```
+
+Realizamos la prueba de igualdad de varianzas
+
+$H_0:$ Las varianzas poblacionales de a y k son iguales entre sí.
+
+$H_a:$ Las varianzas poblacionales de a y k son distintas entre sí.
+
+```{r}
+var.test(a,k)
+```
+
+Realizamos prueba para comparar las medias:
+
+```{r}
+t.test(a,k,  var.equal = TRUE,alternative="less", conf.level=0.01)
+
+```
+
+No hay evidencia estadísticamente significativa de que la media de la longitud de las vides de la variedad ASIEDU, sea menor que la media de la longitud de las vides de la variedad KPAMYO.
+
+## Ejemplo de gráfica de dispersión
+
+```{r}
+#| echo: false
+ggplot(datos,aes(x= NON2, y=NON4))+
+  geom_point(col="green")+
+  labs(x="NON2",
+       y="peso")+
+  theme_bw()
+
+```
+
+Conjetura: Existe una relación lineal entre el valor esperado del número de nodos a las dos semanas y el número de nodos a las cuatro semanas.
+
+Definición de variables:
+
+```{r}
+x =datos$NON2
+y= datos$NON4
+```
+
+Prueba de correlación:
+
+$H_0:$ Las variables no están correlacionadas linealmente.
+
+$H_a:$ Las variables están correlacionadas linealmente.
+
+```{r}
+cor.test(x,y)
+```
+
+Ajustamos los datos a un modelo de regresión lineal simple.
+
+```{r}
+modelo <-lm(y~x)
+modelo
+```
+
+El modelo propuesto es:
+
+$y=1.682x+4.762+ \varepsilon$
+
+Lo cual se interpreta de la siguiente manera:
+
+Si se aumenta un nodo en la semana 2 entonces el número de nodos en la semana 4 aumentará en 1.682.
+
+Significancia del modelo
+
+```{r}
+summary(modelo)
+```
+
+El modelo es estadísticamente significativo.
+
+Explica el 53.73% de la variabilidad del número de nodos a las 4 semanas en función de el número de nodos a las 2 semanas.

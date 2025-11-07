@@ -1,0 +1,101 @@
+---
+title: "R tablas de contingencia"
+output:
+  html_document:
+    df_print: paged
+---
+```{r}
+
+m<-rbind(c(75,35,40),c(60,70,50),c(20,30,40),c(15,25,40))
+m
+```
+
+```{r}
+tc<- as.table(m)
+colnames(tc) <-c("Bueno","Regular","Malo")
+rownames(tc) <-c("Bajo","Medio","Alto","Muy Alto")
+tc
+```
+
+```{r}
+addmargins(tc)
+```
+
+
+Convertirla en proporciones:
+```{r}
+pt <-prop.table(tc)
+pt
+```
+
+Tabla de proporciones por columna:
+
+```{r}
+pc=prop.table(tc,2)
+pc
+```
+
+Frecuencia marginal por filas
+```{r}
+pf <-prop.table(tc,1)
+pf
+```
+
+Comparamos las distribuciones mediante gráfica de barras.
+
+```{r}
+library(ggplot2)
+barplot(t(pt),beside=TRUE)
+```
+
+```{r}
+barplot(pc,beside=TRUE)
+
+```
+
+```{r}
+barplot(t(pf),beside=TRUE)
+```
+Las diferencias entre los histogramas anteriores sugieren que las varibles opinión y estrato están asociadas.
+
+Para establecer si existe algún tipo de asociación estadísticamente significativa entre dichas variables es necesario realizar una prueba de hipótesis en la que se utilizará el estadístico de prueba chí cuadrado.
+
+$H_0:$ No existe asociación entre las variables
+$H_a:$ Sí existe asociación entre las variables.
+
+```{r}
+chisq.test(tc)
+```
+Se rechaza $H_0$ en favor de la hipótesis alternativa con lo que se infiereque si hay
+asociación entre las variables.
+
+La opinión se ve afectada según el estrato.
+
+
+```{r}
+datos <-read.csv("heart_failure_clinical_records_dataset.csv")
+str(datos)
+```
+```{r}
+datos$diabetes <-as.factor(datos$diabetes)
+datos$anaemia <-as.factor(datos$anaemia)
+```
+```{r}
+library(dplyr)
+datos %>% select(diabetes,anaemia)
+```
+
+```{r}
+#install.packages("gmodels")
+library(gmodels)
+CrossTable(datos$diabetes,datos$anaemia,
+  expected = TRUE,
+  prop.r = TRUE,
+  prop.c = TRUE,
+  prop.t = TRUE,
+  prop.chisq = FALSE,
+  chisq = FALSE)
+```
+```{r}
+??CrossTable
+```

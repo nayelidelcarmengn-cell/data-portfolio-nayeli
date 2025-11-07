@@ -1,0 +1,15 @@
+Tab,Column,description_abstract,title,data_type,creator,source,source date,source file,identifier,subject,subject.agrovoc,format,language,relation,coverage,coverage.country,rights
+,,,,13,"Balogun, Morufat",,11/10/2021,,,,,xlsx,eng,,,,CC-BY 4.0
+,Trough,Trough Identification number,,Number,,,,,,,,,,,,,
+,Partition,Trough partition,,Text,,,,,,,,,,,,,
+,FertModule,Fertigation Regime,,Text,,,,,,,,,,,,,
+,Substrate,Substrate,,Text,,,,,,,,,,,,,
+,Variety,The Genotype of the material (accession name),,Text,,,,,,,,,,,,,
+,Planting_material,Planting material (Seed type),,Text,,,,,,,,,,,,,
+,Stand,Reference for planting position,,Number,,,,,,,,,,,,,
+,PltingDate,Date of planting,,Date,,,,,,,,,,,,,
+,Vinelength2wks,Vines Length in centimetres,,Number,,,,,,,,,,,,,
+,NON2,Number of Nodes at 2 weeks,,Number,,,,,,,,,,,,,
+,NON4,Number of Nodes at 4 weeks,,Number,,,,,,,,,,,,,
+,Tubwt6months,Weight  Harvested Tuber at 6 months,,Number,,,,,,,,,,,,,
+,No_tub6months,Number of tubers harvested at 6 months,,Number,,,,,,,,,,,,,

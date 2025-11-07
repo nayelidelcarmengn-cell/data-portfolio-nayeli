@@ -1,0 +1,34 @@
+---
+title: "Mi reporte"
+author: "NGN"
+date: "`r Sys.Date()`"
+output: pdf_document
+---
+# Mi pequeña base de datos
+
+```{r,echo=FALSE}
+nombre <- c("Martin","Julio","Ana")
+edad <- c(13,24,56)
+genero <-c("M","M","F")
+data.frame(nombre,edad,genero)
+```
+```{r}
+datos <- read.csv( "heart_failure_clinical_records_dataset.csv")
+head(datos)
+```
+```{r}
+str(datos)
+```
+```{r}
+library(dplyr)
+
+tabla <- datos %>% 
+  select(age,anaemia,diabetes,time) %>% 
+  rename(edad = age,anemia =anaemia,veces=time) %>% 
+  filter(anemia==1) %>% 
+  group_by(diabetes) %>% 
+  summarise(promedio = mean(edad))
+
+head(tabla)
+```
+
