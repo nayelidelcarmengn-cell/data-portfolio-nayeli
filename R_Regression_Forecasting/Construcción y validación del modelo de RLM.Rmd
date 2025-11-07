@@ -1,0 +1,129 @@
+---
+title: "Construcción y validación del modelo de RLM"
+output:
+  html_notebook: default
+---
+
+Modelar los ingresos semanales (kMXN) de un e-commerce a partir de 5 variables explicativas: 
+- inversion_ads_kMXN (miles MXN invertidos en publicidad) 
+- trafico_web_miles (miles de visitas) 
+- alcance_redes_miles (miles)
+- indice_precio_rel (1 = paridad; >1 más caro que competidores) 
+- descuento_pct (% promedio de descuento)
+
+```{r}
+library(readxl)
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(car) #vif durbin watson
+library(lmtest) #bptest
+library(MASS) #selección de variables del modelo
+library(performance) #multicolinealidad
+library(broom) 
+```
+
+
+# Cargar los datos
+
+```{r}
+ruta <- "escenario_regresion_ecommerce.xlsx"
+datos <- read_excel(ruta)
+datos <- datos %>% 
+  mutate(across(where(is.character), as.numeric))
+head(datos)
+```
+# Exploración inicial
+```{r}
+summary(datos)
+```
+
+Correlaciones
+```{r}
+pairs <- GGally::ggpairs(datos %>% dplyr :: select(-semana) )
+print(pairs)
+```
+
+4. Modelo base
+```{r}
+m_full <- lm(ingresos_kMXN ~ inversion_ads_kMXN + trafico_web_miles + alcance_redes_miles + indice_precio_rel + descuento_pct, data = datos)
+summary(m_full)
+```
+# Diagnóstico de multicolinealidad
+
+Se dice que existe multicolinealidad entre las variables independientes si estas variables están relacionadas entre sí o dependen la una de la otra. 
+
+Factor de inflación de la varianza:
+$$VIF_j = \frac{1}{1-R^2_j} $$
+Si tenemos algún VIF mayor que 10 asumiremos que existe multicolinealidad.
+
+Si el promedio de todos los VIF sean mucho mayores que 1.
+
+
+```{r}
+vif_vals <- car::vif(m_full)
+vif_vals
+```
+
+```{r}
+m_1 <- lm(ingresos_kMXN ~  trafico_web_miles + alcance_redes_miles + indice_precio_rel + descuento_pct, data = datos)
+summary(m_1)
+```
+
+
+```{r}
+m_2 <- lm(ingresos_kMXN ~ inversion_ads_kMXN +  alcance_redes_miles + indice_precio_rel + descuento_pct, data = datos)
+summary(m_2)
+```
+
+```{r}
+m_3 <- lm(ingresos_kMXN ~ alcance_redes_miles + indice_precio_rel + descuento_pct, data = datos)
+summary(m_3)
+```
+
+#Seleccion de las variables
+
+AIC: coeficiente de información de AIKAIKE y es una métrica que indica que tan bueno es el ajuste de los datos a un modelo específico.
+(Relativa)
+
+```{r}
+m_null <- lm(ingresos_kMXN ~ 1 , data= datos)
+step_fwd <- stepAIC(m_null,
+                    scope = list(lower = m_null, upper = m_full,
+                              direction="forward", trace = TRUE))
+```
+```{r}
+modelo <- lm(ingresos_kMXN ~ inversion_ads_kMXN + trafico_web_miles + indice_precio_rel, data=datos)
+summary(modelo)
+```
+# Validación de los supuestos.
+Linealidad: Las variables independientes realmente explican a la variable dependiente mediante un modelo lineal.
+
+```{r}
+resettest(modelo, power = 2:3 ,type = "fitted")
+```
+
+
+Normalidad de los residuos.
+
+```{r}
+shapiro.test(residuals(modelo))
+```
+
+
+Homocedasticidad 
+
+```{r}
+bptest(modelo)
+```
+
+
+Independencia 
+
+```{r}
+durbinWatsonTest(modelo)
+```
+
+NOTA: En el análisis anterior solamente se cumple el supuesto de independencia.
+
+Para que se cumplan los supuestos es necesario obtener valores p mayores que 0.05 en las pruebas de linealidad, normalidad, homocedasticidad e  independencia.
