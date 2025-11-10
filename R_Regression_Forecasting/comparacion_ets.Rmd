@@ -1,0 +1,167 @@
+---
+title: "Pronósticos: SES, Holt, HW(M), Damped(A)"
+output: html_notebook
+---
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+# Introducción
+
+Este cuaderno aplica métodos de suavizamiento exponencial para pronosticar la serie: SES, Holt, Holt-Winters (multiplicativo) y Damped trend (aditivo).
+
+El objetivo es comparar su desempeño con una práctica de validación holdout (entrenamiento vs. prueba) y comunicar no solo pronósticos puntuales, sino también la incertidumbre mediante intervalos de predicción al 95%.
+
+Comparativa de modelos de suavizamiento exponencial para ventas de equipo eléctrico.
+
+
+
+
+SES (ETS(A,N,N)): base sin tendencia ni estacionalidad. Si SES compite bien, sugiere estabilidad y poca estructura adicional.
+
+Holt (ETS(A,A,N)): incorpora tendencia lineal. Si mejora sobre SES en holdout, hay pendiente relevante en el horizonte evaluado.
+
+Holt-Winters multiplicativo (ETS(A,A,M)): mezcla tendencia + estacionalidad proporcional. Debe ganar cuando la estacionalidad crece con el nivel.
+
+Damped aditivo (ETS(A,Ad,N)): tendencia amortiguada en unidades; suele rendir mejor cuando hay tendencia pero las proyecciones lejanas requieren conservadurismo.
+
+
+# librerías
+```{r}
+library(fpp3)
+library(zoo)
+library(fabletools)
+```
+
+
+1. Carga y explora la serie de tiempo.
+```{r}
+elecequip <- read.csv("elecequip.csv")
+head(elecequip)
+```
+
+2. Convierte en tipo de dato serie de tiempo  y realiza la imputación de datos.
+```{r}
+elecequip <- elecequip %>% 
+  select(time, value) %>% 
+  mutate(time = yearmonth(as.Date(as.yearmon(time)))) %>% 
+  as_tsibble(index = time)%>% 
+  fill_gaps(.full = TRUE)
+
+# Imputación recomendada: Kalman (espacio de estado)
+elecequip <- elecequip %>%
+  mutate(value = imputeTS::na_kalman(value, model = "StructTS"))
+
+head(elecequip)
+```
+
+3. Visualización de la seire de tiempo original
+
+```{r}
+autoplot(elecequip,value)
+```
+
+
+
+
+4. Partición de datos: entrenamiento y prueba
+```{r}
+n <- nrow(elecequip)
+test_n <- max(1, floor(0.2 * n))         # 20% para test
+train <- elecequip %>% slice_head(n = n - test_n)
+test  <- elecequip %>% slice_tail(n = test_n)
+```
+
+
+
+
+5.Ajusta a modelos usando SES, Holt y Holt-Winter, damped trend.  
+
+```{r}
+fit <- train %>%
+  model(
+    SES  = ETS(value ~ error("A") + trend("N") + season("N")),
+    HOLT = ETS(value ~ error("A") + trend("A") + season("N")),
+    HW   = ETS(value ~ error("A") + trend("A") + season("A")),
+    DT =  ETS(value ~ error("A") + trend("Ad") + season("N"))
+  )
+```
+
+
+```{r}
+report(fit)
+```
+Nota: Holton Wintes muestra mejor ajuste con los datos de entrenamiento.
+
+
+5.Construye intervalos de predicción al 95 % para un horizonte de 12 meses (julio 2024–junio 2025) para cada modelo.  
+
+```{r}
+fc <- fit %>% forecast(h = test_n)
+```
+
+```{r}
+fc %>% hilo(level=0.95)
+```
+
+
+```{r}
+plot_model <- function(modelo, title = NULL){
+  autoplot(fc %>% filter(.model == modelo), elecequip, level = 95) +
+    labs(title = title %||% paste("Modelo:", modelo),
+         x = NULL, y = "value") +
+    theme_minimal()
+}
+```
+
+
+
+```{r}
+p_ses  <- plot_model("SES",  "SES (ETS(A,N,N))")
+p_holt <- plot_model("HOLT", "Holt (ETS(A,A,N))")
+p_hw   <- plot_model("HW", "Holt–Winters multiplicativo (ETS(A,A,M))")
+p_damp <- plot_model("DT", "Damped aditivo (ETS(A,Ad,N))")
+```
+
+```{r}
+p_ses
+```
+
+```{r}
+p_holt
+```
+
+```{r}
+p_hw
+```
+
+
+```{r}
+p_damp
+```
+
+
+# Métricas de error para test
+
+```{r, message=FALSE, warning=FALSE, results='asis'}
+# in-sample one-step
+acc_test  <- accuracy(fc, test)        # out-of-sample
+library(DT)
+datatable(acc_test %>%
+            select(.model, ME:MAPE), 
+          caption = "Métricas en prueba (holdout)") %>%
+  formatRound(columns = c("ME","RMSE","MAE","MPE","MAPE"),
+              digits = 3)
+```
+
+
+
+Tomamos como métrica de referecnia RMSE y observamos que el mejor modelo es el de tenendencia amortiguada lo cual sugiere que  que la pendiente aporta, pero la proyección conservadora funciona mejor fuera de muestra.
+
+
+Recomendación: Priorizar **presupuestos conservadores** a mediano y largo plazo; revisa políticas de **reposición** para evitar sobrestock
+
+Nota: **Damped (A)** proyecta tendencia **sin exagerar**, ideal para presupuestos y decisiones donde el costo de sobreestimar es alto.
